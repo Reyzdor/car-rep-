@@ -20,3 +20,30 @@ final class CoreDataManager {
         }
     }
 }
+
+
+//CREATE TABLE UserEntity (
+//    id UUID PRIMARY KEY,
+//    email TEXT NOT NULL,
+//    name TEXT,
+//    password TEXT,
+//    phone TEXT,
+//    registrationDate DATE
+
+//    FOREIGN KEY (bookingid) REFERENCES BookingEntity(id)
+//);
+//
+//CREATE TABLE BookingEntity (
+//    id UUID PRIMARY KEY,
+//    book_session DATE,
+//    carBrand TEXT,
+//    carID UUID,
+//    startTime DATE,
+//    endTime DATE,
+//    isActivate BOOLEAN,
+//    status BOOLEAN,
+//    userId UUID,
+//
+//    FOREIGN KEY (userId) REFERENCES UserEntity(id)
+//);
+//

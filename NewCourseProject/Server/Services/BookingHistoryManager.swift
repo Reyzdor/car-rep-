@@ -6,7 +6,6 @@ struct BookingHistoryManager {
         let duration = endTime.timeIntervalSince(startTime)
         guard duration >= 10 else { return }
 
-        // Правильный способ создания объекта
         let booking = NSEntityDescription.insertNewObject(forEntityName: "BookingEntity", into: context) as! BookingEntity
         
         booking.id = UUID()

@@ -15,12 +15,10 @@ struct TopUpView: View {
 
     var body: some View {
         ZStack {
-            // 🔹 Фон — фиолетовый
             Color(red: 0.75, green: 0.15, blue: 1.0).ignoresSafeArea()
                 .ignoresSafeArea()
 
             VStack(spacing: 16) {
-                // 🔹 Крестик для закрытия (как в EditProfileView)
                 HStack {
                     Button(action: { dismiss() }) {
                         Image(systemName: "xmark")
@@ -109,7 +107,6 @@ struct TopUpView: View {
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.1)))
                 .padding(.horizontal)
 
-                // 🔹 Кнопка зелёная, текст белый
                 Button(action: payByCard) {
                     Text("Оплатить картой")
                         .font(.headline.bold())
@@ -134,7 +131,6 @@ struct TopUpView: View {
         }
     }
 
-    // MARK: - Оплата
     private func payByCard() {
         guard let amount = Double(amountText.filter("0123456789".contains)), amount > 0 else {
             alertMessage = "Введите корректную сумму для пополнения."
@@ -146,7 +142,6 @@ struct TopUpView: View {
         showingAlert = true
     }
 
-    // MARK: - Промокод
     private func applyPromo() {
         let code = promoCode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !code.isEmpty else {

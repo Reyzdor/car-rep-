@@ -8,8 +8,6 @@ extension CLLocationCoordinate2D: Equatable {
     }
 }
 
-
-
 struct Car: Identifiable, Equatable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
@@ -136,7 +134,6 @@ struct MainView: View {
                             if bookings[car.id]?.isBooked ?? false {
                                 showCancelBooking = true
                             } else if bookings.values.contains(where: { $0.isBooked && $0.carID != car.id }) {
-                                // нельзя переключить на другую машину
                             } else if bookings[car.id]?.acceptedRules ?? false {
                                 toggleBookCar(car)
                             } else {
@@ -225,18 +222,14 @@ struct MainView: View {
         var booking = bookings[car.id] ?? CarBooking(carID: car.id, isBooked: false, startTime: nil)
         
         if booking.isBooked {
-            // Отмена бронирования
             booking.isBooked = false
             booking.startTime = nil
         } else {
-            // Проверяем баланс
             if balance < pricePerMinute {
-                // Нехватает денег
-                // Можно показать alert через @State var
+               
                 print("Недостаточно средств для аренды")
                 return
             }
-            // Ставим бронь
             booking.isBooked = true
             booking.startTime = Date()
         }
