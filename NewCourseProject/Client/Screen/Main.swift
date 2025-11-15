@@ -8,12 +8,34 @@ extension CLLocationCoordinate2D: Equatable {
     }
 }
 
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
 struct Car: Identifiable, Equatable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
     let brand: String
     let fuelLevel: Double
 }
+
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
 
 struct CarBooking {
     let carID: UUID
@@ -26,6 +48,8 @@ struct MainView: View {
     @AppStorage("userBalance") private var balance: Double = 0.0
     @State private var showingBalanceAlert = false
     @EnvironmentObject var authManager: AuthManager
+    @State private var isExpanded = true
+    @State private var dragOffset: CGFloat = 0
     @Environment(\.managedObjectContext) private var context
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -62,6 +86,8 @@ struct MainView: View {
     @State private var timeToCar: TimeInterval = 0
     @State private var showProfile = false
     
+    @State private var dashPhase: CGFloat = 0
+    
     var body: some View {
         ZStack {
             Map(position: $cameraPosition) {
@@ -89,7 +115,17 @@ struct MainView: View {
                 }
                 
                 if let route {
-                    MapPolyline(route.polyline).stroke(.blue, lineWidth: 5)
+                    MapPolyline(route.polyline)
+                        .stroke(
+                            .black,
+                            style: StrokeStyle(
+                                lineWidth: 2,
+                                lineCap: .round,
+                                lineJoin: .round,
+                                dash: [6, 4],
+                                dashPhase: dashPhase
+                            )
+                        )
                 }
             }
             .mapControls {
@@ -112,42 +148,58 @@ struct MainView: View {
                     Spacer()
                 }
                 Spacer()
-                
-                    .alert("Недостаточно средств", isPresented: $showingBalanceAlert) {
-                        Button("OK", role: .cancel) { }
-                    } message: {
-                        Text("Пополните баланс, чтобы арендовать машину.")
-                    }
             }
             
             if showCarDetails, let car = selectedCar {
-                VStack(spacing: 0) {
-                    Spacer()
-                    CarDetailView(
-                        car: car,
-                        booking: bookings[car.id],
-                        distance: distanceToCar,
-                        travelTime: timeToCar,
-                        pricePerMinute: pricePerMinute,
-                        now: $now,
-                        onBook: {
-                            if bookings[car.id]?.isBooked ?? false {
-                                showCancelBooking = true
-                            } else if bookings.values.contains(where: { $0.isBooked && $0.carID != car.id }) {
-                            } else if bookings[car.id]?.acceptedRules ?? false {
-                                toggleBookCar(car)
-                            } else {
-                                showBookingRules = true
+                ZStack {
+                    VStack(spacing: 0) {
+                        Spacer()
+
+                        CarDetailView(
+                            car: car,
+                            booking: bookings[car.id],
+                            distance: distanceToCar,
+                            travelTime: timeToCar,
+                            pricePerMinute: pricePerMinute,
+                            now: $now,
+                            onBook: {
+                                if bookings[car.id]?.isBooked ?? false {
+                                    showCancelBooking = true
+                                } else if bookings.values.contains(where: { $0.isBooked && $0.carID != car.id }) {
+                                } else if bookings[car.id]?.acceptedRules ?? false {
+                                    toggleBookCar(car)
+                                } else {
+                                    showBookingRules = true
+                                }
+                            },
+                            onClose: { closeCarDetails() }
+                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .frame(maxWidth: .infinity)
+                        .background(Color.clear)
+                        .ignoresSafeArea(edges: .bottom)
+                    }
+                    .edgesIgnoringSafeArea(.bottom)
+
+                    VStack {
+                        Spacer()
+
+                        HStack {
+                            Button(action: { closeCarDetails() }) {
+                                Image(systemName: "arrow.left")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .padding(8)
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 4)
                             }
-                        },
-                        onClose: { closeCarDetails() }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .frame(maxWidth: .infinity)
-                    .background(Color.clear)
-                    .ignoresSafeArea(edges: .bottom)
+                            Spacer()
+                        }
+                        .padding(.bottom, 280)
+                        .padding(.leading, 5)
+                    }
                 }
-                .edgesIgnoringSafeArea(.bottom)
             }
         }
         .sheet(isPresented: $showProfile) {
@@ -179,10 +231,34 @@ struct MainView: View {
                 showCancelBooking = false
             }
         }
-        .onAppear { startGlobalTimer() }
-        .onDisappear { timer?.invalidate() }
+        .alert("Недостаточно средств", isPresented: $showingBalanceAlert) {
+            Button("Пополнить баланс") {
+                showProfile = true
+            }
+            Button("Отмена", role: .cancel) { }
+        } message: {
+            Text("Пополните баланс, чтобы арендовать машину.")
+        }
+        .onAppear {
+            startGlobalTimer()
+            startDashAnimation()
+        }
+        .onDisappear {
+            timer?.invalidate()
+        }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showCarDetails)
     }
+    
+    private let animationSpeed: Double = 0.1
+    private let dashStep: CGFloat = 3
+    
+    private func startDashAnimation() {
+            Timer.scheduledTimer(withTimeInterval: animationSpeed, repeats: true) { _ in
+                withAnimation(.linear(duration: animationSpeed)) {
+                    dashPhase -= dashStep
+                }
+            }
+        }
     
     private func handleCarTap(_ car: Car) {
         selectedCar = car
@@ -225,9 +301,8 @@ struct MainView: View {
             booking.isBooked = false
             booking.startTime = nil
         } else {
-            if balance < pricePerMinute {
-               
-                print("Недостаточно средств для аренды")
+            if balance <= 0 {
+                showingBalanceAlert = true
                 return
             }
             booking.isBooked = true
@@ -236,8 +311,6 @@ struct MainView: View {
         
         bookings[car.id] = booking
     }
-    
-    
     
     private func closeCarDetails() {
         showCarDetails = false
@@ -252,8 +325,6 @@ struct MainView: View {
             now = Date()
         }
     }
-    
-    
     
     private func completeBookingIfNeeded(car: Car, startTime: Date) {
         let endTime = Date()
@@ -275,6 +346,7 @@ struct MainView: View {
                 carID: car.id,
                 startTime: startTime,
                 endTime: endTime,
+                amount: cost,
                 status: true,
                 context: context
             )
@@ -291,6 +363,9 @@ struct CarDetailView: View {
     @Binding var now: Date
     let onBook: () -> Void
     let onClose: () -> Void
+    
+    @State private var isExpanded: Bool = false
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         let booked = booking?.isBooked ?? false
@@ -300,27 +375,42 @@ struct CarDetailView: View {
         let cost = minutesElapsed * Int(pricePerMinute)
 
         VStack(spacing: 12) {
-            Capsule()
-                .fill(Color.white.opacity(0.4))
-                .frame(width: 50, height: 5)
-                .padding(.bottom, 50)
-
+                    Capsule()
+                        .fill(Color.white.opacity(0.4))
+                        .frame(width: 50, height: 5)
+                        .padding(.bottom, 20)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    if value.translation.height > 0 {
+                                        dragOffset = value.translation.height
+                                    }
+                                }
+                                .onEnded { value in
+                                    if value.translation.height > 50 {
+                                        withAnimation(.easeInOut) {
+                                            onClose() 
+                                        }
+                                    } else {
+                                        withAnimation(.spring()) {
+                                            dragOffset = 0
+                                        }
+                                    }
+                                }
+                        )
+            
             VStack(alignment: .leading, spacing: 10) {
+                
                 HStack {
                     Text(car.brand)
                         .font(.title3.bold())
                         .foregroundColor(.white)
                     Spacer()
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white.opacity(0.85))
-                            .padding(6)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Circle())
-                    }
+                    
                 }
-
+                
+                .padding(.top, 20)
+                
                 HStack(spacing: 20) {
                     Label("\(Int(car.fuelLevel * 100))%", systemImage: "fuelpump.fill")
                         .foregroundColor(.orange)
@@ -332,7 +422,7 @@ struct CarDetailView: View {
                         .foregroundColor(.white.opacity(0.9))
                         .font(.subheadline)
                 }
-
+                
                 if booked {
                     Text("Время аренды: \(formatTime(elapsed))")
                         .font(.subheadline.weight(.medium))
@@ -344,7 +434,6 @@ struct CarDetailView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 6)
-
             Button(action: onBook) {
                 Text(booking?.isBooked ?? false ? "Отменить броннирование" : "Забронировать")
                     .font(.headline.bold())
@@ -359,9 +448,14 @@ struct CarDetailView: View {
             .padding(.top, 10)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: UIScreen.main.bounds.height * 0.37)
-        .background(Color(red: 0.75, green: 0.15, blue: 1.0))
-        .shadow(color: .black.opacity(0.3), radius: 10, y: -4)
+        .frame(height: UIScreen.main.bounds.height * 0.35)
+        .background(
+            Color(red: 0.75, green: 0.15, blue: 1.0)
+                .opacity(0.80)
+        )
+        .cornerRadius(20, corners: [.topLeft, .topRight])
+        .shadow(color: .black.opacity(0.25), radius: 12, y: -6)
+        .offset(y: dragOffset)
         .ignoresSafeArea(edges: [.bottom])
     }
 
@@ -401,7 +495,7 @@ struct BookingRulesView: View {
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
-
+            
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
                     Button(action: { checkbox1.toggle() }) {
@@ -414,7 +508,7 @@ struct BookingRulesView: View {
                         .font(.headline)
                         .onTapGesture { checkbox1.toggle() }
                 }
-
+                
                 HStack {
                     Button(action: { checkbox2.toggle() }) {
                         Image(systemName: checkbox2 ? "checkmark.square.fill" : "square")
@@ -428,7 +522,6 @@ struct BookingRulesView: View {
                 }
             }
             .padding(.horizontal, 30)
-
             Button(action: { onConfirm(checkbox1 && checkbox2) }) {
                 Text("Подтвердить")
                     .font(.headline.bold())
@@ -506,15 +599,3 @@ struct CancelBookingView: View {
         .background(Color(red: 0.75, green: 0.15, blue: 1.0).ignoresSafeArea())
     }
 }
-private struct RoundedCorner: Shape {
-    var radius: CGFloat
-    var corners: UIRectCorner
-    func path(in rect: CGRect) -> Path {
-        Path(UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        ).cgPath)
-    }
-}
-

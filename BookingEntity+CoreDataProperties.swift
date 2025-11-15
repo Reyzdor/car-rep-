@@ -25,6 +25,7 @@ extension BookingEntity {
     @NSManaged public var carID: UUID?
     @NSManaged public var startTime: Date?
     @NSManaged public var endTime: Date?
+    @NSManaged public var amount: Double
     @NSManaged public var isActive: Bool
     @NSManaged public var user: UserEntity?
 

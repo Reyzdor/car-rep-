@@ -48,4 +48,19 @@ final class AuthManager: ObservableObject {
             userEmail = user.email ?? ""
         }
     }
+    
+    func getPhoneString() -> String {
+        return currentUser?.phone ?? ""
+    }
+    
+    func setPhone(from string: String) {
+        guard let user = currentUser else { return }
+        user.phone = string
+        let context = CoreDataManager.shared.viewContext
+        do {
+            try context.save()
+        } catch {
+            print("Ошибка при сохранении телефона: \(error.localizedDescription)")
+        }
+    }
 }

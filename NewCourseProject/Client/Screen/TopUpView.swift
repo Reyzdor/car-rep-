@@ -75,7 +75,7 @@ struct TopUpView: View {
                                 .cornerRadius(8)
                                 .foregroundColor(.white)
                         }
-                        Text("Данные карты не передаются — это демонстрация интерфейса.")
+                        Text("Заглушка для платежной системы. Данные карты не обрабатываются.")
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.8))
                     }

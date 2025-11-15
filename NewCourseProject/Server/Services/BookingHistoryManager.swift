@@ -2,7 +2,7 @@ import Foundation
 import CoreData
 
 struct BookingHistoryManager {
-    static func saveBooking(carBrand: String, carID: UUID, startTime: Date, endTime: Date, status: Bool, context: NSManagedObjectContext) {
+    static func saveBooking(carBrand: String, carID: UUID, startTime: Date, endTime: Date, amount: Double, status: Bool, context: NSManagedObjectContext) {
         let duration = endTime.timeIntervalSince(startTime)
         guard duration >= 10 else { return }
 
@@ -14,6 +14,7 @@ struct BookingHistoryManager {
         booking.startTime = startTime
         booking.endTime = endTime
         booking.status = status
+        booking.amount = amount
         booking.book_session = Date()
 
         do {

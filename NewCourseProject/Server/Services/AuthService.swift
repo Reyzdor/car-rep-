@@ -13,6 +13,7 @@ final class AuthService {
         user.name = name
         user.email = email.lowercased()
         user.password = password
+        user.phone = phone
         user.registrationDate = Date()
         try context.save()
         return user

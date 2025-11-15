@@ -76,6 +76,12 @@ struct HistoryView: View {
                                 Text("Статус: \((booking.value(forKey: "status") as? Bool ?? false) ? "Выполнено" : "Отменено")")
                                     .font(.subheadline)
                                     .foregroundColor((booking.value(forKey: "status") as? Bool ?? false) ? .green : .orange)
+                                
+                                if let amount = booking.value(forKey: "amount") as? Double {
+                                    Text("Сумма: \(Int(amount)) ₽")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white)
+                                }
                             }
                             .padding(.vertical, 8)
                             .listRowBackground(Color.clear)
